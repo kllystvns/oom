@@ -21,14 +21,22 @@ oomWorld.scene.add(plane)
 oomWorld.cube(600,600,600,-600,600, -301, 0xffff22);
 oomWorld.cube(600,600,600,600,600, -301, 0xffff22);
 
-var path = new OOM.Path();
+
+
+
+var path = new OOM.Path(20, 200);
 path.addSpline([
+	{x: 500, y: 0, z: 0},
 	{x: 0, y: 0, z: 0},
-	{x: -1000, y: 30, z: -50},
-	{x: 0, y: 0, z: -2000},
+	{x: -180, y: 180, z: 0},
+	{x: -260, y: 180, z: -140},
+	{x: -500, y: -100, z: -300},
+	{x: -500, y: -50, z: -600},
+	{x: 0, y: 0, z: -200}
 ]);
-path.display();
-oomWorld.scene.add(path.displayLine);
+var frame = new OOM.Frame(oomWorld, path, {threshold: 30});
+frame.initSketchMode();
+
 
 
 // var curve = new OOM.SplineSegment([
