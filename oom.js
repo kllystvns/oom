@@ -20,6 +20,11 @@ if (!Math.square) {
 
 var OOM = {};
 
+// GLOBAL VARIABLES
+
+OOM.MODE = 'css product';
+// possible values for mode: 'combined sketch', 'combined product', 'css sketch', 'css product'
+
 
 // WORLD /////////////////////////////////////////
 //////////////////////////////////////////////////
@@ -30,40 +35,43 @@ var OOM = {};
 OOM.World = function(worldDimensions) {
 
 	this.dimensions = worldDimensions;
+	// {x0: *, x1: *, y0: *, y1: *, z0: *, z1: *}
 
-	return this
+	this.scene = new THREE.Scene();
 
 }
 OOM.World.prototype = {
 
-	initSketchMode: function() {
+	init: function() {
 
-		this.mode = 'sketch overview';
+		if ( OOM.MODE.search(/combined/) > -1 ) {
 
-		this.scene = new THREE.Scene();
+			var light1 = new THREE.DirectionalLight(0xffffff, 0.7);
+			light1.position.set(0.7,0.7,1);
+			this.scene.add(light1);
+			var light2 = new THREE.DirectionalLight(0xffffff, 0.2);
+			light2.position.set(-1,-0.3,-0.1);
+			this.scene.add(light2);
+			var light3 = new THREE.AmbientLight( 0x333333 );
+			this.scene.add(light3);
 
-		var light1 = new THREE.DirectionalLight(0xffffff, 0.7);
-		light1.position.set(0.7,0.7,1);
-		this.scene.add(light1);
-		var light2 = new THREE.DirectionalLight(0xffffff, 0.2);
-		light2.position.set(-1,-0.3,-0.1);
-		this.scene.add(light2);
-		var light3 = new THREE.AmbientLight(0x333333);
-		this.scene.add(light3);
-
-		// var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
-		// directionalLight.position.set( 0.3, 1, 1 );
+			this.webGLRenderer = new THREE.WebGLRenderer();
+			this.webGLRenderer.setClearColor( 0xffffff );
+			this.webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(this.webGLRenderer.domElement)
+			
+		}
 
 		this.overviewCamera = new OOM.OverviewCamera(this.dimensions);
 		this.camera = this.overviewCamera;
 
-		this.renderer = new THREE.WebGLRenderer();
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		document.body.appendChild(this.renderer.domElement)
+		this.cssRenderer = new THREE.CSS3DRenderer();
+		this.cssRenderer.setSize( window.innerWidth, window.innerHeight );
+		document.body.appendChild( this.cssRenderer.domElement );
+
+		return this;
 
 	},
-
-	initProductMode: function() {},
 
 	render: function() {
 
@@ -73,8 +81,16 @@ OOM.World.prototype = {
 			return function() {
 
 				if (this.renderLoopId === id) {
-					requestAnimationFrame(renderLoop);
-					this.renderer.render(this.scene, this.camera);
+					requestAnimationFrame( renderLoop );
+
+					if ( this.webGLRenderer ) {
+
+						this.webGLRenderer.render( this.scene, this.camera );
+						
+					}
+
+					this.cssRenderer.render( this.scene, this.camera );
+				
 				}
 
 			}
@@ -91,7 +107,28 @@ OOM.World.prototype = {
 
 	},
 
-	cube: function(w,h,d,x,y,z,color) {
+	setCSSRenderInterval: function( interval ) {
+
+		this.cssRenderer.domElement.style.transition = 'perspective ' + ( interval / 1000 ) + 's ease';
+		this.cssRenderer.domElement.firstChild.style.transition = 'transform ' + ( interval / 1000 ) + 's ease';
+
+	},
+
+	overview: function(direction) {
+
+		this.camera = this.overviewCamera;
+
+		this.overviewCamera.lookFrom(direction, this.dimensions);
+
+	},
+
+	viewPath: function() {
+
+		this.camera = this.pathCamera;
+
+	},
+
+	cube: function( w, h, d, x, y, z, color ) {
 
 		var geometry = new THREE.BoxGeometry( w, h, d );
 		var material = new THREE.MeshLambertMaterial( { color: color } );
@@ -103,20 +140,26 @@ OOM.World.prototype = {
 
 	},
 
-	overview: function(direction) {
+	// options: styles, position, rotation
+	div: function( options ) {
 
-		this.overviewCamera.lookFrom(direction, this.dimensions);
-		
-		if (this.mode !== 'sketch overview') {
-			this.mode = 'sketch overview';
-			this.camera = this.overviewCamera;
-		} 
+		this.scene.add( new OOM.Div( options ) );
 
 	},
 
-	viewPath: function() {
+	add: function( objects ) {
 
-		this.camera = this.pathCamera;
+		if ( !( objects instanceof Array ) ) {
+
+			objects = [ objects ];
+
+		}
+
+		for ( var i = 0; i < objects.length; i++ ) {
+
+			this.scene.add( objects[i] );
+
+		}
 
 	}
 
@@ -128,14 +171,12 @@ OOM.World.prototype = {
 // for viewing full 3d setting in development //
 ////////////////////////////////////////////////
 
-OOM.OverviewCamera = function(worldDimensions) {
+OOM.OverviewCamera = function( worldDimensions ) {
 // not necessary to make new class ?
 
 	THREE.PerspectiveCamera.call(this, 75, window.innerWidth/window.innerHeight, 0.1, 5000);
 
 	this.lookFrom('front', worldDimensions);
-
-	return this;
 
 }
 OOM.OverviewCamera.prototype = Object.create(THREE.PerspectiveCamera.prototype);
@@ -181,6 +222,42 @@ OOM.OverviewCamera.prototype.lookFrom = function(direction, worldDimensions) {
 
 
 
+
+OOM.DOMObject = function( options ) {
+
+	var element = document.querySelector( options.selector );
+
+	THREE.CSS3DObject.call( this, element );
+
+	this.position.set( options.position.x, options.position.y, options.position.z );
+
+	this.rotation.set( options.rotation.x || 0, options.rotation.y || 0, options.rotation.z || 0 );
+
+	this.restyle( options.styles );
+
+	if ( !this.element.classList.contains('oom') ) {
+
+		this.element.classList.add('oom');
+
+	}
+
+}
+OOM.DOMObject.prototype = Object.create( THREE.CSS3DObject.prototype );
+OOM.DOMObject.prototype.constructor = OOM.DOMObject;
+
+OOM.DOMObject.prototype.restyle = function( styles ) {
+
+	for ( style in styles ) {
+
+		this.element.style[style] = styles[style];
+
+	}
+
+}
+
+
+
+
 // PATH ////////////////////////////////////////
 ////////////////////////////////////////////////
 // controls camera motion along trajectory /////
@@ -188,11 +265,11 @@ OOM.OverviewCamera.prototype.lookFrom = function(direction, worldDimensions) {
 ////////////////////////////////////////////////
 
 
-OOM.Path = function(interval, viewDistance) {
+OOM.Path = function(distanceInterval, viewDistance) {
 
 	THREE.CurvePath.call(this);
 
-	this.interval = interval;
+	this.interval = distanceInterval;
 	this.uInterval = null;
 
 	this.viewDistance = viewDistance;
@@ -211,7 +288,7 @@ OOM.Path.prototype.constructor = OOM.Path;
 
 OOM.Path.prototype.display = function() {
 
-	var geometry = this.createSpacedPointsGeometry(100);
+	var geometry = this.createSpacedPointsGeometry(200);
 	var material = new THREE.LineBasicMaterial( { color : 0x00fff0 } );
 	this.displayLine = new THREE.Line( geometry, material );
 
@@ -238,6 +315,8 @@ OOM.Path.prototype.recalculate = function() {
 
 	this.uInterval = this.interval / this.length;
 
+	this.setPosition( this.arcPosition );
+	
 	this.display();
 
 }
@@ -279,11 +358,11 @@ OOM.Path.prototype.goBack = function() {
 
 
 
-OOM.PathCamera = function() {
+OOM.PathCamera = function( fov ) {
 
-	THREE.PerspectiveCamera.call(this, 75, window.innerWidth/window.innerHeight, 0.1, 5000);
+	fov = fov || 75;
 
-	return this;
+	THREE.PerspectiveCamera.call(this, fov, window.innerWidth/window.innerHeight, 0.5, 5000);
 
 }
 OOM.PathCamera.prototype = Object.create(THREE.PerspectiveCamera.prototype);
@@ -297,55 +376,53 @@ OOM.PathCamera.prototype.setPosition = function( position ) {
 
 
 
-// FRAME /////////////////////////////////////////
+// CONTROLLER ////////////////////////////////////
 //////////////////////////////////////////////////
 // controls user interface actions for movement //
 //////////////////////////////////////////////////
 
-// name doesnt make sense if doesnt have camera
-OOM.Frame = function(world, path, options) {
+OOM.Controller = function(world, path, options) {
 
 	this.world = world;
 
 	this.path = path;
 
-	this.scrollState = {
+	this.world.pathCamera = this.path.camera;
 
+	this.scrollState = {
 		curr: 0,
 		prev: 0
-
 	};
 
-	this.threshold = options.threshold || 30;
+	this.scrollThreshold = options.scrollThreshold || 30;
+
+	this.timeInterval = options.timeInterval || 100;
+	this.world.setCSSRenderInterval( this.timeInterval );
 
 	this.animationReady = true;
 
 }
-OOM.Frame.prototype = {
+OOM.Controller.prototype = {
 
-	initSketchMode: function() {
+	init: function() {
 
-		var preventDefault = function( event ) {
-			event.preventDefault();
-		}
-		window.addEventListener( 'wheel', preventDefault );
+		this.exceptScrollable();
 
-		var scrollThis = this.onScroll.bind( this )
-
+		var scrollThis = this.onScroll.bind( this );
 		window.addEventListener( 'wheel', scrollThis );
 
-		this.world.pathCamera = this.path.camera;
+		var resizeThis = this.onResize.bind( this );
+		window.addEventListener( 'resize', resizeThis );
 
-		this.world.scene.add( this.path.displayLine );
+		this.viewPath();
 
-	},
+		if ( OOM.MODE.search(/sketch/) > -1 ) {
 
-	initProductMode: function() {
-
-		var preventDefault = function( event ) {
-			event.preventDefault();
+			this.world.scene.add( this.path.displayLine );
+		
 		}
-		window.addEventListener( 'wheel', preventDefault );
+
+		return this;
 
 	},
 
@@ -361,11 +438,39 @@ OOM.Frame.prototype = {
 
 	},
 
+	exceptScrollable: function() {
+
+		var scrolls = document.querySelectorAll('.scrollable');
+
+		for ( var i = 0; i < scrolls.length; i++ ) {
+
+			scrolls[i].addEventListener('wheel', function(e) { 
+
+				e.stopPropagation();
+
+			});
+
+		}
+
+	},
+
 	onScroll: function( event ) {
+
+		event.preventDefault();
 
 		this.scrollState.curr += -event.wheelDeltaY / 3;
 
 		this.update();
+
+	},
+
+	onResize: function() {
+
+		// this.world.overviewCamera.aspect = window.innerWidth / window.innerHeight;
+		// this.world.pathCamera.aspect = window.innerWidth / window.innerHeight;
+
+		// this.world.webGLRenderer.setSize( window.innerWidth, window.innerHeight);
+		// this.world.cssRenderer.setSize( window.innerWidth, window.innerHeight);
 
 	},
 
@@ -374,7 +479,7 @@ OOM.Frame.prototype = {
 	// NEED TO DECIDE whether to throttle animation
 		if ( true || this.animationReady === true ) {
 
-			if ( this.scrollState.curr - this.scrollState.prev > this.threshold ) {
+			if ( this.scrollState.curr - this.scrollState.prev > this.scrollThreshold ) {
 
 				this.animationReady = false;
 
@@ -382,10 +487,9 @@ OOM.Frame.prototype = {
 
 				this.path.goForward();
 
-				var thisObj = this;
 				this.animationCount( this );
 
-			} else if ( this.scrollState.prev - this.scrollState.curr > this.threshold ) {
+			} else if ( this.scrollState.prev - this.scrollState.curr > this.scrollThreshold ) {
 
 				this.animationReady = false;
 
@@ -393,7 +497,6 @@ OOM.Frame.prototype = {
 
 				this.path.goBack();
 
-				var thisObj = this;
 				this.animationCount( this );				
 
 			}
@@ -408,7 +511,7 @@ OOM.Frame.prototype = {
 
 			thisObj.animationReady = true;
 
-		}, 200);
+		}, this.timeInterval );
 
 	},
 

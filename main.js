@@ -1,164 +1,116 @@
-var oomWorld = new OOM.World({
-	x0: -1000,
-	x1: 1000,
-	y0: -1000,
-	y1: 1000,
-	z0: 0,
-	z1: -2000
-})
-oomWorld.initSketchMode();
-oomWorld.render();
+OOM.MODE = 'css product';
 
-var light = new THREE.AmbientLight(0x444444)
-oomWorld.scene.add(light)
+(function() {
 
+	window.oomVerse = new OOM.World({
+		x0: -1000,
+		x1: 1000,
+		y0: -1000,
+		y1: 1000,
+		z0: 0,
+		z1: -2000
+	})
+	oomVerse.init();
+	oomVerse.render();
 
-var geometry = new THREE.PlaneGeometry( 1000, 1000 );
-var material = new THREE.MeshBasicMaterial( {color: 0xaaaaff, opacity: 0.5, transparent: true, side: 2} );
-var plane = new THREE.Mesh( geometry, material );
-oomWorld.scene.add(plane)
-
-oomWorld.cube(600,600,600,-600,600, -301, 0xffff22);
-oomWorld.cube(600,600,600,600,600, -301, 0xffff22);
+	var light = new THREE.AmbientLight(0x444444)
+	oomVerse.scene.add(light)
 
 
+	var geometry = new THREE.PlaneGeometry( 1000, 1000 );
+	var material = new THREE.MeshBasicMaterial( {color: 0xaaaaff, opacity: 0.5, transparent: true, side: 2} );
+	var plane = new THREE.Mesh( geometry, material );
+	oomVerse.scene.add(plane)
+
+	oomVerse.cube(600,600,600,-600,600, -301, 0xffff22);
+	oomVerse.cube(600,600,600,600,600, -301, 0xffff22);
+	oomVerse.cube(300,300,300, -300,0, 0, 0xffff22);
+
+	oomVerse.add([
+		new OOM.DOMObject({
+			selector: '#a1',
+			position: { x: -100, y: -100, z: -100 },
+			rotation: { x: -0.5, y: -0.5, z: 0 },
+			styles: {
+				backgroundColor: 'red',
+				opacity: '0.5'
+			}
+		}),
+		new OOM.DOMObject({
+			selector: '#a2',
+			position: { x: 200, y: 0, z: 100 },
+			rotation: { x: -0.5, y: -0.5, z: 0 },
+			styles: {
+				backgroundColor: 'red',
+				opacity: '0.5'
+			}
+		})
+	])
+	
+})();
+
+(function() {
+
+	window.oomPa = new OOM.Path(20, 200);
+	oomPa.addSpline([
+		{x: 500, y: 0, z: 0},
+		{x: 0, y: 0, z: 0},
+		{x: -180, y: 180, z: 0},
+		{x: -260, y: 180, z: -140},
+		{x: -500, y: -100, z: -300},
+		{x: -500, y: -50, z: -600},
+		{x: 0, y: 0, z: -200}
+	]);
+	
+})();
+
+(function() {
+
+	window.oomer = new OOM.Controller( oomVerse, oomPa, {} );
+
+	oomer.init();
+
+})();
 
 
-var path = new OOM.Path(20, 200);
-path.addSpline([
-	{x: 500, y: 0, z: 0},
-	{x: 0, y: 0, z: 0},
-	{x: -180, y: 180, z: 0},
-	{x: -260, y: 180, z: -140},
-	{x: -500, y: -100, z: -300},
-	{x: -500, y: -50, z: -600},
-	{x: 0, y: 0, z: -200}
-]);
-var frame = new OOM.Frame(oomWorld, path, {threshold: 30});
-frame.initSketchMode();
+//////////////////////////////////////
 
+// var cssCanvas = document.createElement('div');
+// cssCanvas.setAttribute('class', 'canvas');
+// document.body.appendChild( cssCanvas );
 
+// cssCanvas.style.transform = 'perspective(1300px) scale(1)'
 
-// var curve = new OOM.SplineSegment([
-// 	{x: -200, y: 0, z: 0},
-// 	{x: -100, y: 50, z: 50},
-// 	{x: 0, y: 30, z: 0},
-// 	{x: 100, y: 0, z: 200},
-// 	{x: 200, y: -60, z: 0}
-// ]);
+// var cssRoot = document.createElement('div');
+// cssRoot.setAttribute('class', 'root');
+// cssCanvas.appendChild( cssRoot );
 
-// var pt = curve.curve.getPointAt(0.6)
-// var vec = curve.curve.getTangentAt(0.6)
-// for (axis in vec) {
-// 	if (['x','y','z'].indexOf(axis) > -1) {
-// 		vec[axis] *= 100
-// 	}
-// }
+// cssRoot.style.transform = 'translate3d(0px,0px,-1300px)'
 
-// var geometry = new THREE.Geometry();
-// geometry.vertices = [new THREE.Vector3(), vec];
-// geometry.translate(pt.x, pt.y, pt.z)
+// cub3d([
 
-// var material = new THREE.LineBasicMaterial( { color : 0x00fff0 } );
-
-// var point = new THREE.Line( geometry, material );
-// elements.push(point)
-
-
-// var curve = new OOM.SplineSegment([
-// 	{x: -200, y: 0, z: 0},
-// 	{x: -100, y: 50, z: 50},
-// 	{x: 0, y: 30, z: -100},
-// 	{x: 100, y: 0, z: 200},
-// 	{x: 200, y: -60, z: 0}
-// ]);
-
-// var geometry = new THREE.Geometry();
-// geometry.vertices = curve.curve.getPoints( 50 );
-
-// var material = new THREE.LineBasicMaterial( { color : 0xff00f0 } );
-
-// var curveObject = new THREE.Line( geometry, material );
-
-
-
-
-// elements.push(curveObject);
-
-// elements.push(light);
-
-
-// 			var geometry = new THREE.BoxGeometry( 100, 100, 100 );
-// 			var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-// 			var cube2 = new THREE.Mesh( geometry, material );
-// 			cube2.position.y = 200;
-// 			cube2.rotateZ(1)
-// 			cube2.rotateX(0.5)
-// 			elements.push(cube2)
-
-// 			var geometry = new THREE.BoxGeometry( 100, 100, 100 );
-// 			var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-// 			var cube = new THREE.Mesh( geometry, material );
-// 			cube.position.y = -200;
-// 			cube.rotateZ(-1)
-// 			cube.rotateX(-0.5)
-// 			elements.push(cube)
-
-// var arc = new THREE.EllipseCurve(
-// 	0,0,
-// 	20,20,
-// 	0,2 * Math.PI,
-// 	false,
-// 	0
-// )
-// var path = new THREE.Path(arc.getPoints(30))
-// var geometry = path.createPointsGeometry()
-// var material = new THREE.LineBasicMaterial({color: 0xff0000, linewidth: 1})
-// var ellipse = new THREE.Line(geometry, material)
-// elements.push(ellipse);
-
-
-// var directionalLight = new THREE.DirectionalLight( 0xffffff, 0.8 );
-// directionalLight.position.set( 0.3, 1, 1 );
-// elements.push( directionalLight );
-
-// var initialize = function(elements) {
-// 	window.scene = new THREE.Scene();
-// 	window.camera = window.camera1 = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-// 	camera.position.z = 680;
-
-// 	for (var i=0; i < elements.length; i++) {
-// 		scene.add(elements[i]);
-// 	}
-// 	// scene.rotateX(-0.74)
-// 	// scene.rotateY(-0.75)
-// 	// scene.rotateZ(0.75)
-// }
-
-// var framerender = function() {
-// 	window.renderer = new THREE.WebGLRenderer();
-// 	renderer.setSize(window.innerWidth, window.innerHeight);
-// 	// renderer.setClearColor(0xffffff)
-// 	document.body.appendChild(renderer.domElement);
-
-// 	var render = function() {
-// 		requestAnimationFrame(render);
-// 		renderer.render(scene, camera);
-// 		// scene.rotateX(0.01);
-
+// 	{
+// 		attributes: {
+// 			origin: [-450, -150, -150],
+// 			dimensions: [300, 300, 300],
+// 			rotation: [0, 0, 0],
+// 			id: 'function-cube'
+// 		},
+// 		styles: {
+// 			background: 'red',
+// 			opacity: '0.3'
+// 		},
+// 		html: {
+// 			face1A: '<p>function(</p>',
+// 			face1B: '<p>&nbsp;function()</p>',
+// 			face2A: '<p>function){</p>',
+// 			face2B: '<p>}</p>',
+// 			face3A: '<p></p>',
+// 			face3B: '<p></p>'
+// 		}		
 // 	}
 
-// 	render();
-// }
+// ], '.root');
 
-// initialize(elements);
-// framerender();
 
-// document.body.style.height = '10000px'
-// var div = document.querySelector('div');
-// var newDiv
-// for (var i = 0; i < 100; i++) {
-// 	newDiv = document.createElement('div');
-// 	newDiv.textContent = div.textContent;
-// 	document.body.appendChild(newDiv);
-// }
+
