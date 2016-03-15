@@ -1,14 +1,3 @@
-//- PARAMETERS (APP INPUTS)
-
-//- WORLD PARAMETERS
-//--- world dimenions {x0,x1,y0,y1,z0,z1}
-
-//- OBJECT PARAMETERS
-//--- object dimensions
-//--- object rotation
-
-//- PATH PARAMETERS
-//--- path spline points
 
 if (!Math.square) {
 
@@ -109,8 +98,8 @@ OOM.World.prototype = {
 
 	setCSSRenderInterval: function( interval ) {
 
-		this.cssRenderer.domElement.style.transition = 'perspective ' + ( interval / 1000 ) + 's ease';
-		this.cssRenderer.domElement.firstChild.style.transition = 'transform ' + ( interval / 1000 ) + 's ease';
+		// this.cssRenderer.domElement.style.transition = 'perspective ' + ( interval / 1000 ) + 's ease';
+		// this.cssRenderer.domElement.firstChild.style.transition = 'transform ' + ( interval / 1000 ) + 's ease';
 
 	},
 
@@ -222,16 +211,17 @@ OOM.OverviewCamera.prototype.lookFrom = function(direction, worldDimensions) {
 
 
 
-
 OOM.DOMObject = function( options ) {
 
 	var element = document.querySelector( options.selector );
 
 	THREE.CSS3DObject.call( this, element );
 
-	this.position.set( options.position.x, options.position.y, options.position.z );
+	options.position = options.position ? options.position : { x: 0, y: 0, z: 0 };
+	options.rotation = options.rotation ? options.rotation : { x: 0, y: 0, z: 0 };
 
-	this.rotation.set( options.rotation.x || 0, options.rotation.y || 0, options.rotation.z || 0 );
+	this.position.set( options.position.x, options.position.y, options.position.z );
+	this.rotation.set( options.rotation.x, options.rotation.y, options.rotation.z );
 
 	this.restyle( options.styles );
 
@@ -265,7 +255,7 @@ OOM.DOMObject.prototype.restyle = function( styles ) {
 ////////////////////////////////////////////////
 
 
-OOM.Path = function(distanceInterval, viewDistance) {
+OOM.Path = function( distanceInterval, viewDistance ) {
 
 	THREE.CurvePath.call(this);
 
@@ -280,7 +270,11 @@ OOM.Path = function(distanceInterval, viewDistance) {
 
 	this.points = [];
 
+	this.steps = [];
+
 	this.camera = new OOM.PathCamera();
+
+	return this;
 
 }
 OOM.Path.prototype = Object.create(THREE.CurvePath.prototype);
@@ -293,7 +287,7 @@ OOM.Path.prototype.display = function() {
 	this.displayLine = new THREE.Line( geometry, material );
 
 }
-OOM.Path.prototype.addSpline = function(pointsArray) {
+OOM.Path.prototype.addSpline = function( pointsArray ) {
 
 	for (var i = 0; i < pointsArray.length; i++) {
 		var x = pointsArray[i].x;
@@ -309,6 +303,21 @@ OOM.Path.prototype.addSpline = function(pointsArray) {
 	this.recalculate();
 
 }
+OOM.Path.prototype.addSteps = function( steps ) {
+
+		if ( !( steps instanceof Array ) ) {
+
+			steps = [ steps ];
+
+		}
+
+		for ( var i = 0; i < steps.length; i++ ) {
+
+			this.steps.push( steps[i] );
+
+		}
+
+}
 OOM.Path.prototype.recalculate = function() {
 
 	this.length = this.getLength();
@@ -322,12 +331,19 @@ OOM.Path.prototype.recalculate = function() {
 }
 OOM.Path.prototype.setPosition = function( u ) {
 
+	this.arcPosition = u;
 	this.position = this.getPointAt( u );
 
 	var cameraVector = this.getProjectionLine();
 
 	this.camera.setPosition( cameraVector );
 	this.camera.lookAt( this.position );
+
+	for ( var i = 0; i < this.steps.length; i++ ) {
+
+		this.steps[ i ].setStateAtPosition( this.arcPosition );
+
+	}
 
 }
 OOM.Path.prototype.getProjectionLine = function() {
@@ -341,18 +357,84 @@ OOM.Path.prototype.getProjectionLine = function() {
 }
 OOM.Path.prototype.goForward = function() {
 
-	this.arcPosition += this.uInterval;
-	this.arcPosition > 1 ? this.arcPosition = 0 : null;
+	var arcPosition = this.arcPosition + this.uInterval;
+	arcPosition > 1 ? arcPosition = 0 : null;
 
-	this.setPosition( this.arcPosition ); 
+	this.setPosition( arcPosition ); 
 
 }
 OOM.Path.prototype.goBack = function() {
 
-	this.arcPosition -= this.uInterval;
-	this.arcPosition < 0 ? this.arcPosition = 1 : null;
+	var arcPosition = this.arcPosition - this.uInterval;
+	arcPosition < 0 ? arcPosition = 1 : null;
 
-	this.setPosition( this.arcPosition ); 
+	this.setPosition( arcPosition ); 
+
+}
+
+
+
+OOM.OrbitPath = function( distanceInterval, viewDistance, origin ) {
+
+	OOM.Path.call( this, distanceInterval, viewDistance );
+
+	this.origin = new THREE.Vector3( origin[0], origin[1], origin[2] );
+
+}
+OOM.OrbitPath.prototype = Object.create( OOM.Path.prototype );
+OOM.OrbitPath.prototype.constructor = OOM.OrbitPath;
+
+OOM.OrbitPath.prototype.setPosition = function( u ) {
+	
+	this.arcPosition = u;
+	this.position = this.getPointAt( u );
+
+	var cameraVector = this.getProjectionLine();
+	this.camera.setPosition( cameraVector );
+	
+	this.camera.up = this.getUpDirectionLine();	
+	this.camera.lookAt( this.origin );
+
+	for ( var i = 0; i < this.steps.length; i++ ) {
+
+		this.steps[ i ].setStateAtPosition( this.arcPosition );
+
+	}
+
+};
+OOM.OrbitPath.prototype.getProjectionLine = function() {
+
+	var projection = new THREE.Vector3();
+	projection.subVectors( this.position, this.origin );
+	projection.normalize();
+	projection.multiplyScalar( this.viewDistance );
+
+	return projection.add( this.position );
+
+};
+OOM.OrbitPath.prototype.getUpDirectionLine = function() {
+	
+	return this.getTangentAt( this.arcPosition );
+
+};
+OOM.OrbitPath.prototype.setStepObjectPositions = function() {
+
+	for ( var i = 0; i < this.steps.length; i++ ) {
+
+		this.setPosition( this.steps[ i ].arcPosition );
+		var domObj;
+		for ( var j = 0; j < this.steps[ i ].domObjects.length; j++ ) {
+
+			domObj = this.steps[ i ].domObjects[ j ];
+
+			domObj.position.set( this.position.x, this.position.y, this.position.z );
+			domObj.setRotationFromEuler( this.camera.rotation );
+
+		}
+
+	}
+
+	this.setPosition( 0 );
 
 }
 
@@ -376,18 +458,73 @@ OOM.PathCamera.prototype.setPosition = function( position ) {
 
 
 
+OOM.PathStep = function( arcPosition, options ) {
+
+	this.arcPosition = arcPosition || 0;
+	this.approachDistance = options.approachDistance || 0;
+
+	this.domObjects = options.domObjects || [];
+
+	this.onStepEnter = options.onStepEnter || function() {};
+	this.onStepExit = options.onStepExit || function() {};
+
+	this.isActive = false;
+
+	this.isInitialized = options.init ? false : true;
+	this.init = options.init || function() {};
+
+	return this;
+
+};
+OOM.PathStep.prototype = {
+
+	setStateAtPosition: function( arcPosition ) {
+
+		if ( this.isActive === false && Math.abs( this.arcPosition - arcPosition ) < this.approachDistance ) {
+
+			this.onStepEnter();
+
+			this.isActive = true;
+
+		} else if ( this.isActive === true && Math.abs( this.arcPosition - arcPosition ) > this.approachDistance ) {
+
+			this.onStepExit();
+
+			this.isActive = false;
+
+		}
+
+	},
+
+	addDOMObject: function( DOMObject ) {
+
+		this.domObjects.push( DOMObject );
+
+		return this;
+
+	}
+
+};
+
+
+
 // CONTROLLER ////////////////////////////////////
 //////////////////////////////////////////////////
 // controls user interface actions for movement //
 //////////////////////////////////////////////////
 
-OOM.Controller = function(world, path, options) {
+OOM.Controller = function( world, path, options ) {
 
 	this.world = world;
 
 	this.path = path;
 
 	this.world.pathCamera = this.path.camera;
+	for ( var i = 0; i < this.path.steps.length; i++ ) {
+
+		this.world.add( this.path.steps[ i ].domObjects );
+
+	}
 
 	this.scrollState = {
 		curr: 0,
@@ -401,10 +538,12 @@ OOM.Controller = function(world, path, options) {
 
 	this.animationReady = true;
 
+	return this;
+
 }
 OOM.Controller.prototype = {
 
-	init: function() {
+	init: function( callback ) {
 
 		this.exceptScrollable();
 
@@ -421,6 +560,8 @@ OOM.Controller.prototype = {
 			this.world.scene.add( this.path.displayLine );
 		
 		}
+
+		if ( callback ) { callback() };
 
 		return this;
 
@@ -523,42 +664,4 @@ OOM.Controller.prototype = {
 
 
 
-
-
-
-
-
-// function ScrollState() {
-// 	this.wheel = {
-// 		curr: 0,
-// 		prev: 0
-// 	};
-// }
-// ScrollState.prototype.init = function() {
-// 	function onSwipe(caller) {
-// 		return function(event) {
-// 			caller.wheel.curr += event.wheelDeltaY / 3 ;
-// 		}
-// 	} 
-// 	window.addEventListener('wheel', onSwipe(this))
-
-// 	function animate() {
-// 		var deltaY = this.wheel.curr - this.wheel.prev;
-// 		var newPosition = window.scrollY - deltaY;
-// 		this.wheel.prev = this.wheel.curr;
-// 		window.scrollTo(0, newPosition);
-// 	}
-
-// 	this.animate = animate.bind(this);
-// }
-
-
-// function preventDefault(event) {
-// 	event.preventDefault();
-// }
-// window.addEventListener('wheel', preventDefault);
-
-// var scrollState = new ScrollState();
-// scrollState.init();
-// animateInt = setInterval(scrollState.animate, 200);
 
